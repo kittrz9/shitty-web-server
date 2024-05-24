@@ -25,7 +25,7 @@ void httpSendFile(int socket, char* file) {
 	char* response;
 	response = readSiteFile(file, &responseSize);
 	if(response == NULL) {
-		httpHandleRequest(socket, "404");
+		httpHandleRequest(socket, "404"); // if there's no way to handle 404s then this just infinitely recurses through both functions lmao
 	} else {
 		httpSendResponse(socket, 200, response, responseSize);
 		close(socket);
