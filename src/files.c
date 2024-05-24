@@ -26,11 +26,11 @@ typedef struct {
 	char prefix[155];
 } ustarHeader;
 
-uint8_t* siteFiles = NULL;
+char* siteFiles = NULL;
 size_t siteFilesSize;
 char* rootName = NULL;
 
-void initSiteFiles() {
+void initSiteFiles(void) {
 	FILE* f = fopen("html.tar", "rb");
 	if(f == NULL) {
 		perror("fopen");
@@ -80,7 +80,7 @@ char* readSiteFile(char* name, size_t* s) {
 		size_t size = parseOctStr(header->size);
 		if(strcmp(header->name, fullPath) == 0) {
 			free(fullPath);
-			uint8_t* data = malloc(size);
+			char* data = malloc(size);
 			memcpy(data, &siteFiles[i+512], size);
 			*s = size;
 			return data;
@@ -93,7 +93,7 @@ char* readSiteFile(char* name, size_t* s) {
 	return NULL;
 }
 
-void uninitSiteFiles() {
+void uninitSiteFiles(void) {
 	free(siteFiles);
 	free(rootName);
 }

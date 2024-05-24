@@ -14,7 +14,7 @@ fi
 CFLAGS="-O2"
 
 CFILES="$(find src/ -name "*.c")"
-CFLAGS="-g -fsanitize=address"
+CFLAGS="-Wall -Wextra -Wpedantic -g -fsanitize=address"
 LDFLAGS="$CFLAGS"
 OBJS=""
 NAME="shittyWebServer"
