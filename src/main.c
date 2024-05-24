@@ -7,21 +7,15 @@
 #include <unistd.h>
 
 #include "files.h"
-
-void httpSendFile(int socket, char* file) {
-	size_t responseSize;
-	char* response;
-	response = readSiteFile(file, &responseSize);
-	if(response == NULL) {
-		response = readSiteFile("404.html", &responseSize);
-	}
-	send(socket, response, responseSize, 0);
-	free(response);
-	close(socket);
-}
+#include "http.h"
 
 int main(int argc, char** argv) {
-	initSiteFiles();
+	if(argc != 2) {
+		printf("usage:\n\t%s (tar file with all the site's files)\n", argv[0]);
+		return 1;
+	}
+
+	initSiteFiles(argv[1]);
 
 	struct sockaddr_in serverAddr;
 	struct sockaddr_in clientAddr;
@@ -54,7 +48,7 @@ int main(int argc, char** argv) {
 		if(strncmp(buffer, "GET", 3) == 0) {
 			// GET / 
 			if(buffer[5] == ' ') {
-				httpSendFile(clientSocket, "index.html");
+				httpHandleRequest(clientSocket, "index.html");
 			} else {
 				uint8_t len = 0;
 				char* c = buffer+5;
@@ -69,7 +63,7 @@ int main(int argc, char** argv) {
 					}
 				}
 				if(c == NULL) {
-					httpSendFile(clientSocket, "404.html");
+					httpHandleRequest(clientSocket, "404");
 					continue;
 				}
 				char* target = malloc(len + 11); // need room for index.html just in case
@@ -79,7 +73,7 @@ int main(int argc, char** argv) {
 					strcat(target, "index.html");
 					len += 10;
 				}
-				httpSendFile(clientSocket, target);
+				httpHandleRequest(clientSocket, target);
 				free(target);
 			}
 		}

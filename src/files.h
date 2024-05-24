@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-void initSiteFiles(void);
+void initSiteFiles(char* path);
 void uninitSiteFiles(void);
 char* readSiteFile(char* path, size_t* s);
 

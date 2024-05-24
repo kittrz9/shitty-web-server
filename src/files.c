@@ -30,8 +30,8 @@ char* siteFiles = NULL;
 size_t siteFilesSize;
 char* rootName = NULL;
 
-void initSiteFiles(void) {
-	FILE* f = fopen("html.tar", "rb");
+void initSiteFiles(char* path) {
+	FILE* f = fopen(path, "rb");
 	if(f == NULL) {
 		perror("fopen");
 		exit(1);
@@ -67,7 +67,6 @@ char* readSiteFile(char* name, size_t* s) {
 	char* fullPath = malloc(len);
 	strcpy(fullPath, rootName);
 	strcat(fullPath, name);
-	//fullPath[len-1] = '\0';
 	uint32_t i = 0; 
 	while(i < siteFilesSize) {
 		ustarHeader* header = (ustarHeader*)&siteFiles[i];
