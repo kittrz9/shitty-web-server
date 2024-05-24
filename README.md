@@ -4,7 +4,7 @@ a web server written in C to host static files stored in a tar file<br>
 
 ## building
 you should just be able to run `./build.sh` in this directory and it should compile everything<br>
-<br>
+you should also run `./pack.sh` to pack everything in the `html/` directory into a tar file<br>
 
 ## usage
 just run the executable in the `build/` directory as root with the tar file you want to serve as the first argument.<br><br>
