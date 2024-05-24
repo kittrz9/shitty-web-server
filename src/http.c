@@ -9,6 +9,17 @@
 
 #include "files.h"
 
+
+void httpSendResponse(int socket, uint16_t status, char* data, size_t size) {
+	// HTTP/1.1 200\r\n\r\n(data)
+	char* response = malloc(size+16);
+	uint8_t statusLen = sprintf(response, "HTTP/1.1 %i\r\n\r\n", status);
+	memcpy(response+statusLen, data, size);
+	size += statusLen;
+	send(socket, response, size, 0);
+	free(response);
+}
+
 void httpSendFile(int socket, char* file) {
 	size_t responseSize;
 	char* response;
@@ -16,10 +27,10 @@ void httpSendFile(int socket, char* file) {
 	if(response == NULL) {
 		httpHandleRequest(socket, "404");
 	} else {
-		send(socket, response, responseSize, 0);
+		httpSendResponse(socket, 200, response, responseSize);
 		close(socket);
+		free(response);
 	}
-	free(response);
 }
 
 // just so I don't have to make sure everything has their indices lined up
@@ -53,7 +64,7 @@ void httpHandle404(int socket) {
 
 	snprintf(fullPage, pageSize, "%s%s%s", start, redirect, end);
 	fullPage[pageSize-1] = '\0';
-	send(socket, fullPage, strlen(fullPage), 0);
+	httpSendResponse(socket, 404, fullPage, strlen(fullPage));
 	free(fullPage);
 	return;
 }
@@ -69,7 +80,7 @@ void httpHandleCounter(int socket) {
 
 	snprintf(fullPage, pageSize, "%s%i%s", start, i, end);
 	fullPage[pageSize-1] = '\0';
-	send(socket, fullPage, strlen(fullPage), 0);
+	httpSendResponse(socket, 200, fullPage, strlen(fullPage));
 	free(fullPage);
 	++i;
 	return;
