@@ -13,7 +13,7 @@ it has to be run as root to have access to port 80, if you change the port to so
 
 ## why a tar file?
 partly because having the web server confined to a single real file instead of the whole file system seemed like it would reduce any risk of it serving some file from outside it's intended directory a lot (though security really isn't this projects main goal lmao).<br><br>
-partly because I kinda like the idea of everything it hosts being contained in a single file that could be compressed with something like bz2 (though it currently isn't).<br><br>
+partly because I kinda like the idea of everything it hosts being contained in a single file that could be compressed with something like bz2.<br><br>
 partly because I already had code to parse [USTAR](https://wiki.osdev.org/USTAR) formatted files from [my os dev project](https://github.com/kittrz9/os-dev-thing).<br><br>
 mostly because I thought it was an interesting idea.<br><br>
 
