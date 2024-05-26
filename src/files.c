@@ -3,11 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
-
-#ifdef WITH_BZIP2
-#include <bzlib.h>
-#endif
 
 // https://wiki.osdev.org/USTAR
 
@@ -30,9 +27,25 @@ typedef struct {
 	char prefix[155];
 } ustarHeader;
 
-char* siteFiles = NULL;
-size_t siteFilesSize;
 char* rootName = NULL;
+FILE* tarFile = NULL;
+enum {
+	COMPRESSED_BZIP2,
+	COMPRESSED_NONE,
+} compressionType = COMPRESSED_NONE;
+
+#ifdef WITH_BZIP2
+#include <bzlib.h>
+
+BZFILE* bzFile = NULL;
+int bzerror = -1;
+
+void resetBZip2File(void) {
+	BZ2_bzReadClose(&bzerror, bzFile);
+	bzFile = BZ2_bzReadOpen(&bzerror, tarFile, 0, 0, NULL, 0);
+}
+
+#endif
 
 void initSiteFiles(char* path) {
 	if(!strstr(path, ".tar")) {
@@ -40,53 +53,50 @@ void initSiteFiles(char* path) {
 		exit(1);
 	}
 
-	FILE* f = fopen(path, "rb");
-	if(f == NULL) {
+	tarFile = fopen(path, "rb");
+	if(tarFile == NULL) {
 		perror("fopen");
 		exit(1);
 	}
 
 	if(strstr(path, ".bz2")) {
+		compressionType = COMPRESSED_BZIP2;
+	}
+
+	// first entry should give the root directory name
+	char buffer[512];
+	switch(compressionType) {
+		case COMPRESSED_BZIP2:
 #ifdef WITH_BZIP2
-		int bzerror = -1;
-		BZFILE* bzFile = NULL;
-		bzFile = BZ2_bzReadOpen(&bzerror, f, 0, 0, NULL, 0);
-		if(!bzFile) {
-			printf("could not open bz2 file: %i\n", bzerror);
-			exit(1);
-		}
-		size_t bufferSize = 2048;
-		siteFiles = malloc(bufferSize);
-		siteFilesSize = BZ2_bzRead(&bzerror, bzFile, siteFiles, bufferSize);
-		while (bzerror != BZ_STREAM_END) {
+		{
+			bzerror = -1;
+			bzFile = BZ2_bzReadOpen(&bzerror, tarFile, 0, 0, NULL, 0);
+			if(!bzFile) {
+				printf("could not open bz2 file: %i\n", bzerror);
+				exit(1);
+			}
+			BZ2_bzRead(&bzerror, bzFile, buffer, 512);
 			if(bzerror < BZ_OK) {
 				printf("bzRead error: %i\n", bzerror);
 				exit(1);
 			}
-			if(bzerror == BZ_OK) {
-				bufferSize *= 2;
-				siteFiles = realloc(siteFiles, bufferSize);
-			}
-			siteFilesSize += BZ2_bzRead(&bzerror, bzFile, siteFiles+bufferSize/2, bufferSize/2);
+			fseek(tarFile, 0, SEEK_SET);
+			resetBZip2File();
+			break;
 		}
 #else
-		printf("no bzip2 support\n");
-		exit(1);
+			printf("no bzip2 support\n");
+			exit(1);
+			break;
 #endif
-	} else {
-		fseek(f, 0, SEEK_END);
-		size_t size = ftell(f);
-		fseek(f, 0, SEEK_SET);
-		siteFiles = malloc(size);
-		fread(siteFiles, size, 1, f);
-		siteFilesSize = size;
-		fclose(f);
+		default: 
+			fread(buffer, 512, 1, tarFile);
+			fseek(tarFile, 0, SEEK_SET);
+			break;
 	}
-
-	// first entry should give the root directory name
-	uint8_t len = strlen(siteFiles);
+	uint8_t len = strlen(buffer);
 	rootName = malloc(len+1);
-	strcpy(rootName, siteFiles);
+	strcpy(rootName, buffer);
 }
 
 uint32_t parseOctStr(char* str) {
@@ -106,32 +116,64 @@ char* readSiteFile(char* name, size_t* s) {
 	char* fullPath = malloc(len);
 	strcpy(fullPath, rootName);
 	strcat(fullPath, name);
-	uint32_t i = 0; 
-	while(i < siteFilesSize) {
-		ustarHeader* header = (ustarHeader*)&siteFiles[i];
+	char ustarHeaderBuffer[512];
+	size_t bytesRead;
+	do {
+		switch(compressionType) {
+			case COMPRESSED_BZIP2:
+#ifdef WITH_BZIP2
+				bytesRead = BZ2_bzRead(&bzerror, bzFile, ustarHeaderBuffer, 512);
+#endif
+				break;
+			default:
+				bytesRead = fread(ustarHeaderBuffer, 1, 512, tarFile);
+		}
+		ustarHeader* header = (ustarHeader*)ustarHeaderBuffer;
 
 		if(memcmp(header->ustarStr, "ustar", 5) != 0) {
-			i+=512;
 			continue;
 		}
 
-		size_t size = parseOctStr(header->size);
 		if(strcmp(header->name, fullPath) == 0) {
+			size_t size = parseOctStr(header->size);
 			free(fullPath);
 			char* data = malloc(size);
-			memcpy(data, &siteFiles[i+512], size);
+			switch(compressionType) {
+				case COMPRESSED_BZIP2:
+#ifdef WITH_BZIP2
+					BZ2_bzRead(&bzerror, bzFile, data, size);
+					fseek(tarFile, 0, SEEK_SET);
+					resetBZip2File();
+					break;
+#endif
+				default:
+					fread(data, size, 1, tarFile);
+					fseek(tarFile, 0, SEEK_SET);
+					break;
+			}
 			*s = size;
 			return data;
 		}
-		i += 512;
-	}
+	} while(bytesRead == 512);
 
+	fseek(tarFile, 0, SEEK_SET);
+#ifdef WITH_BZIP2
+	if(compressionType == COMPRESSED_BZIP2) {
+		resetBZip2File();
+	}
+#endif
 	free(fullPath);
 	*s = 0;
 	return NULL;
 }
 
 void uninitSiteFiles(void) {
-	free(siteFiles);
 	free(rootName);
+	if(compressionType == COMPRESSED_BZIP2) {
+#ifdef WITH_BZIP2
+		BZ2_bzReadClose(&bzerror, bzFile);
+#endif
+	} else {
+		fclose(tarFile);
+	}
 }

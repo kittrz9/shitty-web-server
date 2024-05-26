@@ -18,7 +18,7 @@ fi
 
 NAME="shittyWebServer"
 CFILES="$(find src/ -name "*.c")"
-CFLAGS="-Wall -Wextra -Wpedantic -g -fsanitize=address"
+CFLAGS="-std=c99 -Wall -Wextra -Wpedantic -g -fsanitize=address"
 LDFLAGS="$CFLAGS"
 
 OBJS=""
