@@ -2,10 +2,12 @@
 
 set -xe
 
-if [ -n "$(command -v clang)" ]; then
-	CC="clang"
-elif [ -n "$(command -v gcc)" ]; then
-	CC="gcc"
+if [ -z "$(command -v $CC)" ]; then
+	if [ -n "$(command -v clang)" ]; then
+		CC="clang"
+	elif [ -n "$(command -v gcc)" ]; then
+		CC="gcc"
+	fi
 elif [ -z "$CC" ]; then
 	echo "no compiler found"
 	exit 1
