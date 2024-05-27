@@ -42,6 +42,7 @@ int bzerror = -1;
 
 void resetBZip2File(void) {
 	BZ2_bzReadClose(&bzerror, bzFile);
+	fseek(tarFile, 0, SEEK_SET);
 	bzFile = BZ2_bzReadOpen(&bzerror, tarFile, 0, 0, NULL, 0);
 }
 
@@ -111,60 +112,85 @@ uint32_t parseOctStr(char* str) {
 	return value;
 }
 
-char* readSiteFile(char* name, size_t* s) {
-	size_t len = strlen(name) + strlen(rootName) + 1;
-	char* fullPath = malloc(len);
-	strcpy(fullPath, rootName);
-	strcat(fullPath, name);
+char* fileSearchNoComp(char* fullPath, size_t* s) {
 	char ustarHeaderBuffer[512];
 	size_t bytesRead;
 	do {
-		switch(compressionType) {
-			case COMPRESSED_BZIP2:
-#ifdef WITH_BZIP2
-				bytesRead = BZ2_bzRead(&bzerror, bzFile, ustarHeaderBuffer, 512);
-#endif
-				break;
-			default:
-				bytesRead = fread(ustarHeaderBuffer, 1, 512, tarFile);
-		}
+		bytesRead = fread(ustarHeaderBuffer, 1, 512, tarFile);
 		ustarHeader* header = (ustarHeader*)ustarHeaderBuffer;
 
 		if(memcmp(header->ustarStr, "ustar", 5) != 0) {
 			continue;
 		}
 
+		size_t size = parseOctStr(header->size);
 		if(strcmp(header->name, fullPath) == 0) {
-			size_t size = parseOctStr(header->size);
-			free(fullPath);
 			char* data = malloc(size);
-			switch(compressionType) {
-				case COMPRESSED_BZIP2:
+			fread(data, size, 1, tarFile);
+			fseek(tarFile, 0, SEEK_SET);
+			*s = size;
+			return data;
+		}
+		fseek(tarFile, size + (512-size%512) - 512, SEEK_CUR);
+	} while(bytesRead == 512);
+	fseek(tarFile, 0, SEEK_SET);
+	*s = 0;
+	return NULL;
+}
+
+char* fileSearchBZ2(char* fullPath, size_t* s) {
 #ifdef WITH_BZIP2
-					BZ2_bzRead(&bzerror, bzFile, data, size);
-					fseek(tarFile, 0, SEEK_SET);
-					resetBZip2File();
-					break;
-#endif
-				default:
-					fread(data, size, 1, tarFile);
-					fseek(tarFile, 0, SEEK_SET);
-					break;
-			}
+	char ustarHeaderBuffer[512];
+	size_t bytesRead;
+	do {
+		bytesRead = BZ2_bzRead(&bzerror, bzFile, ustarHeaderBuffer, 512);
+		ustarHeader* header = (ustarHeader*)ustarHeaderBuffer;
+
+		if(memcmp(header->ustarStr, "ustar", 5) != 0) {
+			continue;
+		}
+
+		size_t size = parseOctStr(header->size);
+		if(strcmp(header->name, fullPath) == 0) {
+			char* data = malloc(size);
+				BZ2_bzRead(&bzerror, bzFile, data, size);
+				fseek(tarFile, 0, SEEK_SET);
+				resetBZip2File();
 			*s = size;
 			return data;
 		}
 	} while(bytesRead == 512);
-
-	fseek(tarFile, 0, SEEK_SET);
-#ifdef WITH_BZIP2
-	if(compressionType == COMPRESSED_BZIP2) {
-		resetBZip2File();
-	}
-#endif
-	free(fullPath);
+	resetBZip2File();
 	*s = 0;
 	return NULL;
+#else
+	(void)fullPath;
+	(void)s;
+	printf("no bzip2 support\n");
+	exit(1);
+#endif
+}
+
+char* readSiteFile(char* name, size_t* s) {
+	size_t len = strlen(name) + strlen(rootName) + 1;
+	char* fullPath = malloc(len);
+	strcpy(fullPath, rootName);
+	strcat(fullPath, name);
+	char* data;
+	switch(compressionType) {
+		case COMPRESSED_NONE:
+			data = fileSearchNoComp(fullPath, s);
+			break;
+		case COMPRESSED_BZIP2:
+			data = fileSearchBZ2(fullPath, s);
+			break;
+		default:
+			printf("invalid compression type\n");
+			exit(1);
+			break;
+	}
+	free(fullPath);
+	return data;
 }
 
 void uninitSiteFiles(void) {
@@ -173,7 +199,6 @@ void uninitSiteFiles(void) {
 #ifdef WITH_BZIP2
 		BZ2_bzReadClose(&bzerror, bzFile);
 #endif
-	} else {
-		fclose(tarFile);
 	}
+	fclose(tarFile);
 }
