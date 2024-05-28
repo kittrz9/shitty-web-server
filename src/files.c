@@ -1,5 +1,10 @@
 #include "files.h"
 
+#ifdef WITH_ZLIB
+// have to do this to get the fileno function
+// probably should make it not need that function
+#define _POSIX_C_SOURCE 600
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -30,8 +35,9 @@ typedef struct {
 char* rootName = NULL;
 FILE* tarFile = NULL;
 enum {
-	COMPRESSED_BZIP2,
 	COMPRESSED_NONE,
+	COMPRESSED_BZIP2,
+	COMPRESSED_ZLIB,
 } compressionType = COMPRESSED_NONE;
 
 #ifdef WITH_BZIP2
@@ -42,10 +48,16 @@ int bzerror = -1;
 
 void resetBZip2File(void) {
 	BZ2_bzReadClose(&bzerror, bzFile);
-	fseek(tarFile, 0, SEEK_SET);
+	rewind(tarFile);
 	bzFile = BZ2_bzReadOpen(&bzerror, tarFile, 0, 0, NULL, 0);
 }
 
+#endif
+
+#ifdef WITH_ZLIB
+#include <zlib.h>
+
+gzFile gzTarFile = NULL;
 #endif
 
 void initSiteFiles(char* path) {
@@ -62,14 +74,19 @@ void initSiteFiles(char* path) {
 
 	if(strstr(path, ".bz2")) {
 		compressionType = COMPRESSED_BZIP2;
+	} else if(strstr(path, ".gz")) {
+		compressionType = COMPRESSED_ZLIB;
 	}
 
 	// first entry should give the root directory name
 	char buffer[512];
 	switch(compressionType) {
+		case COMPRESSED_NONE: 
+			fread(buffer, 512, 1, tarFile);
+			rewind(tarFile);
+			break;
 		case COMPRESSED_BZIP2:
 #ifdef WITH_BZIP2
-		{
 			bzerror = -1;
 			bzFile = BZ2_bzReadOpen(&bzerror, tarFile, 0, 0, NULL, 0);
 			if(!bzFile) {
@@ -81,19 +98,25 @@ void initSiteFiles(char* path) {
 				printf("bzRead error: %i\n", bzerror);
 				exit(1);
 			}
-			fseek(tarFile, 0, SEEK_SET);
 			resetBZip2File();
-			break;
-		}
 #else
 			printf("no bzip2 support\n");
 			exit(1);
-			break;
 #endif
-		default: 
-			fread(buffer, 512, 1, tarFile);
-			fseek(tarFile, 0, SEEK_SET);
 			break;
+		case COMPRESSED_ZLIB:
+#ifdef WITH_ZLIB
+			gzTarFile = gzdopen(fileno(tarFile), "rb");
+			gzread(gzTarFile, buffer, 512);
+			gzrewind(gzTarFile);
+#else
+			printf("no zlib support\n");
+			exit(1);
+#endif
+			break;
+		default:
+			printf("invalid compression type\n");
+			exit(1);
 	}
 	uint8_t len = strlen(buffer);
 	rootName = malloc(len+1);
@@ -127,13 +150,13 @@ char* fileSearchNoComp(char* fullPath, size_t* s) {
 		if(strcmp(header->name, fullPath) == 0) {
 			char* data = malloc(size);
 			fread(data, size, 1, tarFile);
-			fseek(tarFile, 0, SEEK_SET);
+			rewind(tarFile);
 			*s = size;
 			return data;
 		}
 		fseek(tarFile, size + (512-size%512) - 512, SEEK_CUR);
 	} while(bytesRead == 512);
-	fseek(tarFile, 0, SEEK_SET);
+	rewind(tarFile);
 	*s = 0;
 	return NULL;
 }
@@ -153,9 +176,8 @@ char* fileSearchBZ2(char* fullPath, size_t* s) {
 		size_t size = parseOctStr(header->size);
 		if(strcmp(header->name, fullPath) == 0) {
 			char* data = malloc(size);
-				BZ2_bzRead(&bzerror, bzFile, data, size);
-				fseek(tarFile, 0, SEEK_SET);
-				resetBZip2File();
+			BZ2_bzRead(&bzerror, bzFile, data, size);
+			resetBZip2File();
 			*s = size;
 			return data;
 		}
@@ -167,6 +189,39 @@ char* fileSearchBZ2(char* fullPath, size_t* s) {
 	(void)fullPath;
 	(void)s;
 	printf("no bzip2 support\n");
+	exit(1);
+#endif
+}
+
+char* fileSearchZlib(char* fullPath, size_t* s) {
+#ifdef WITH_ZLIB
+	char ustarHeaderBuffer[512];
+	size_t bytesRead;
+	do {
+		bytesRead = gzread(gzTarFile, ustarHeaderBuffer, 512);
+		ustarHeader* header = (ustarHeader*)ustarHeaderBuffer;
+
+		if(memcmp(header->ustarStr, "ustar", 5) != 0) {
+			continue;
+		}
+
+		size_t size = parseOctStr(header->size);
+		if(strcmp(header->name, fullPath) == 0) {
+			char* data = malloc(size);
+			gzread(gzTarFile, data, size);
+			gzrewind(gzTarFile);
+			*s = size;
+			return data;
+		}
+		gzseek(gzTarFile, size + (512-size%512) - 512, SEEK_CUR);
+	} while(bytesRead == 512);
+	gzrewind(gzTarFile);
+	*s = 0;
+	return NULL;
+#else
+	(void)fullPath;
+	(void)s;
+	printf("no zlib support\n");
 	exit(1);
 #endif
 }
@@ -184,6 +239,9 @@ char* readSiteFile(char* name, size_t* s) {
 		case COMPRESSED_BZIP2:
 			data = fileSearchBZ2(fullPath, s);
 			break;
+		case COMPRESSED_ZLIB:
+			data = fileSearchZlib(fullPath, s);
+			break;
 		default:
 			printf("invalid compression type\n");
 			exit(1);
@@ -198,6 +256,10 @@ void uninitSiteFiles(void) {
 	if(compressionType == COMPRESSED_BZIP2) {
 #ifdef WITH_BZIP2
 		BZ2_bzReadClose(&bzerror, bzFile);
+#endif
+	} else if(compressionType == COMPRESSED_ZLIB) {
+#ifdef WITH_ZLIB
+		gzclose(gzTarFile);
 #endif
 	}
 	fclose(tarFile);

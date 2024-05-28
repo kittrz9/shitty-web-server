@@ -2,3 +2,4 @@ build/
 obj/
 *.tar
 *.bz2
+*.gz

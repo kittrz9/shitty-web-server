@@ -18,6 +18,11 @@ if [ -n "$WITH_BZIP2" ]; then
 	LIBS="-lbz2"
 fi
 
+if [ -n "$WITH_ZLIB" ]; then
+	DEFINES="-DWITH_ZLIB"
+	LIBS="-lz"
+fi
+
 NAME="shittyWebServer"
 CFILES="$(find src/ -name "*.c")"
 CFLAGS="-std=c99 -Wall -Wextra -Wpedantic -g -fsanitize=address"
