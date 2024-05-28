@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
 					++len;
 					++c;
 					if(len > 80) { // semi-arbitrary
-						printf("get request too long\n");
+						fprintf(stderr, "get request too long\n");
 						// have to do this to skip this in the outer loop
 						c = NULL;
 						break;

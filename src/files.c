@@ -57,7 +57,7 @@ gzFile gzTarFile = NULL;
 
 void initSiteFiles(char* path) {
 	if(!strstr(path, ".tar")) {
-		printf("provided file is not a tar file\n");
+		fprintf(stderr, "provided file is not a tar file\n");
 		exit(1);
 	}
 
@@ -85,17 +85,17 @@ void initSiteFiles(char* path) {
 			bzerror = -1;
 			bzFile = BZ2_bzReadOpen(&bzerror, tarFile, 0, 0, NULL, 0);
 			if(!bzFile) {
-				printf("could not open bz2 file: %i\n", bzerror);
+				fprintf(stderr, "could not open bz2 file: %i\n", bzerror);
 				exit(1);
 			}
 			BZ2_bzRead(&bzerror, bzFile, buffer, 512);
 			if(bzerror < BZ_OK) {
-				printf("bzRead error: %i\n", bzerror);
+				fprintf(stderr, "bzRead error: %i\n", bzerror);
 				exit(1);
 			}
 			resetBZip2File();
 #else
-			printf("no bzip2 support\n");
+			fprintf(stderr, "no bzip2 support\n");
 			exit(1);
 #endif
 			break;
@@ -105,12 +105,12 @@ void initSiteFiles(char* path) {
 			gzread(gzTarFile, buffer, 512);
 			gzrewind(gzTarFile);
 #else
-			printf("no zlib support\n");
+			fprintf(stderr, "no zlib support\n");
 			exit(1);
 #endif
 			break;
 		default:
-			printf("invalid compression type\n");
+			fprintf(stderr, "invalid compression type\n");
 			exit(1);
 	}
 	uint8_t len = strlen(buffer);
@@ -183,7 +183,7 @@ char* fileSearchBZ2(char* fullPath, size_t* s) {
 #else
 	(void)fullPath;
 	(void)s;
-	printf("no bzip2 support\n");
+	fprintf(stderr, "no bzip2 support\n");
 	exit(1);
 #endif
 }
@@ -216,7 +216,7 @@ char* fileSearchZlib(char* fullPath, size_t* s) {
 #else
 	(void)fullPath;
 	(void)s;
-	printf("no zlib support\n");
+	fprintf(stderr, "no zlib support\n");
 	exit(1);
 #endif
 }
@@ -238,7 +238,7 @@ char* readSiteFile(char* name, size_t* s) {
 			data = fileSearchZlib(fullPath, s);
 			break;
 		default:
-			printf("invalid compression type\n");
+			fprintf(stderr, "invalid compression type\n");
 			exit(1);
 			break;
 	}
