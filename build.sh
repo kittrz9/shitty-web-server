@@ -14,19 +14,20 @@ elif [ -z "$CC" ]; then
 fi
 
 if [ -n "$WITH_BZIP2" ]; then
-	DEFINES="-DWITH_BZIP2"
-	LIBS="-lbz2"
+	DEFINES="$DEFINES -DWITH_BZIP2"
+	LIBS="$LIBS -lbz2"
 fi
 
 if [ -n "$WITH_ZLIB" ]; then
-	DEFINES="-DWITH_ZLIB"
-	LIBS="-lz"
+	DEFINES="$DEFINES -DWITH_ZLIB"
+	LIBS="$LIBS -lz"
 fi
 
 NAME="shittyWebServer"
 CFILES="$(find src/ -name "*.c")"
 CFLAGS="-std=c99 -Wall -Wextra -Wpedantic -g -fsanitize=address"
 LDFLAGS="$CFLAGS"
+DEFINES="$DEFINES -D_POSIX_SOURCE" # have to set this feature test macro thing for the fileno function
 
 OBJS=""
 

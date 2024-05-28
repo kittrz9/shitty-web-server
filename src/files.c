@@ -1,10 +1,5 @@
 #include "files.h"
 
-#ifdef WITH_ZLIB
-// have to do this to get the fileno function
-// probably should make it not need that function
-#define _POSIX_C_SOURCE 600
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
