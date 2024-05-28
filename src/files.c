@@ -18,7 +18,7 @@ typedef struct {
 	char checksum[8];
 	char typeFlag;
 	char linkedFile[100];
-	char ustarStr[5];
+	char ustarStr[6];
 	char ustarVersion[2];
 	char ownerName[32];
 	char groupName[32];
