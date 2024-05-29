@@ -222,6 +222,12 @@ char* fileSearchZlib(char* fullPath, size_t* s) {
 }
 
 char* readSiteFile(char* name, size_t* s) {
+	if(name[0] == '\0') {
+		fprintf(stderr, "null get request\n");
+		*s = 0;
+		return NULL;
+	}
+
 	size_t len = strlen(name) + strlen(rootName) + 1;
 	char* fullPath = malloc(len);
 	strcpy(fullPath, rootName);

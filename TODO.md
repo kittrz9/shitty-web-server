@@ -1,3 +1,3 @@
  - add support for more modern tar file formats
  - figure out a way to use port 80 without root privileges
- - add support for filenames longer than 80 characters when handling http requests and longer than 100 characters when reading from the tar file
+ - split functions to read from a compressed tar file into separate files
