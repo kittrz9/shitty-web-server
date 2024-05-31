@@ -7,10 +7,10 @@ if [ -z "$(command -v $CC)" ]; then
 		CC="clang"
 	elif [ -n "$(command -v gcc)" ]; then
 		CC="gcc"
+	else
+		echo "no compiler found"
+		exit 1
 	fi
-else
-	echo "no compiler found"
-	exit 1
 fi
 
 if [ -n "$WITH_BZIP2" ]; then

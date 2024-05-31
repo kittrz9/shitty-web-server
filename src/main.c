@@ -27,6 +27,12 @@ int main(int argc, char** argv) {
 		exit(1);
 	}
 
+	int opt = 1;
+	if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+		perror("setsockopt");
+		exit(1);
+	}
+
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serverAddr.sin_port = htons(80);
@@ -52,7 +58,7 @@ int main(int argc, char** argv) {
 			} else {
 				uint8_t len = 0;
 				char* c = buffer+5;
-				while(*c != ' ') {
+				while(*c != ' ' && *c != '\0') {
 					++len;
 					++c;
 					if(len > 80) { // semi-arbitrary
@@ -76,6 +82,8 @@ int main(int argc, char** argv) {
 				httpHandleRequest(clientSocket, target);
 				free(target);
 			}
+		} else {
+			close(clientSocket);
 		}
 	}
 	close(serverSocket);
