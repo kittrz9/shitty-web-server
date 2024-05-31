@@ -51,37 +51,28 @@ int main(int argc, char** argv) {
 		char buffer[2048];
 		read(clientSocket, buffer, 2048);
 
-		if(strncmp(buffer, "GET", 3) == 0) {
-			// GET / 
-			if(buffer[5] == ' ') {
-				httpHandleRequest(clientSocket, "index.html");
-			} else {
-				uint8_t len = 0;
-				char* c = buffer+5;
-				while(*c != ' ' && *c != '\0') {
-					++len;
-					++c;
-					if(len > 80) { // semi-arbitrary
-						fprintf(stderr, "get request too long\n");
-						// have to do this to skip this in the outer loop
-						c = NULL;
-						break;
-					}
+		if(strncmp(buffer, "GET /", 5) == 0) {
+			// GET /
+			uint8_t len = 0;
+			char* c = buffer+5;
+			while(*c != ' ' && *c != '\0') {
+				++len;
+				++c;
+				if(len > 80) { // semi-arbitrary
+					fprintf(stderr, "get request too long\n");
+					break;
 				}
-				if(c == NULL) {
-					httpHandleRequest(clientSocket, "404");
-					continue;
-				}
-				char* target = malloc(len + 11); // need room for index.html just in case
-				strncpy(target, buffer+5, len);
-				target[len] = '\0';
-				if(*(c-1) == '/') {
-					strcat(target, "index.html");
-					len += 10;
-				}
-				httpHandleRequest(clientSocket, target);
-				free(target);
 			}
+			*c = '\0';
+			if(len > 80) {
+				httpHandleRequest(clientSocket, "404");
+				continue;
+			}
+			char* target = malloc(len + 1);
+			strcpy(target, buffer+5);
+			target[len] = '\0';
+			httpHandleRequest(clientSocket, target);
+			free(target);
 		} else {
 			close(clientSocket);
 		}

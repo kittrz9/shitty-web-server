@@ -146,7 +146,7 @@ char* fileSearchNoComp(char* fullPath, size_t* s) {
 		}
 
 		size_t size = parseOctStr(header->size);
-		if(strcmp(header->name, fullPath) == 0) {
+		if(header->typeFlag != '5' && strcmp(header->name, fullPath) == 0) {
 			char* data = malloc(size);
 			fread(data, size, 1, tarFile);
 			rewind(tarFile);
@@ -173,7 +173,7 @@ char* fileSearchBZ2(char* fullPath, size_t* s) {
 		}
 
 		size_t size = parseOctStr(header->size);
-		if(strcmp(header->name, fullPath) == 0) {
+		if(header->typeFlag != '5' && strcmp(header->name, fullPath) == 0) {
 			char* data = malloc(size);
 			BZ2_bzRead(&bzerror, bzFile, data, size);
 			resetBZip2File();
@@ -205,7 +205,7 @@ char* fileSearchZlib(char* fullPath, size_t* s) {
 		}
 
 		size_t size = parseOctStr(header->size);
-		if(strcmp(header->name, fullPath) == 0) {
+		if(header->typeFlag != '5' && strcmp(header->name, fullPath) == 0) {
 			char* data = malloc(size);
 			gzread(gzTarFile, data, size);
 			gzrewind(gzTarFile);
@@ -226,12 +226,6 @@ char* fileSearchZlib(char* fullPath, size_t* s) {
 }
 
 char* readSiteFile(char* name, size_t* s) {
-	if(name[0] == '\0') {
-		fprintf(stderr, "null get request\n");
-		*s = 0;
-		return NULL;
-	}
-
 	size_t len = strlen(name) + strlen(rootName) + 1;
 	char* fullPath = malloc(len);
 	strcpy(fullPath, rootName);
