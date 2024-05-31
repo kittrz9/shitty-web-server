@@ -33,6 +33,7 @@ void httpSendFile(int socket, char* file) {
 			sprintf(indexPath, "%s/index.html", file);
 		}
 		response = readSiteFile(indexPath, &responseSize);
+		free(indexPath);
 		if(response == NULL) {
 			httpHandleRequest(socket, "404"); // if there's no way to handle 404s then this just infinitely recurses through both functions lmao
 			return;
