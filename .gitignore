@@ -1,5 +1,6 @@
 build/
 obj/
 *.tar
+*.pax
 *.bz2
 *.gz

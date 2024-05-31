@@ -8,7 +8,7 @@ if [ -z "$(command -v $CC)" ]; then
 	elif [ -n "$(command -v gcc)" ]; then
 		CC="gcc"
 	fi
-elif [ -z "$CC" ]; then
+else
 	echo "no compiler found"
 	exit 1
 fi

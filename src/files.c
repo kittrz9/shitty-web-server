@@ -56,8 +56,8 @@ gzFile gzTarFile = NULL;
 #endif
 
 void initSiteFiles(char* path) {
-	if(!strstr(path, ".tar")) {
-		fprintf(stderr, "provided file is not a tar file\n");
+	if(!strstr(path, ".tar") && !strstr(path, ".pax")) {
+		fprintf(stderr, "provided file is not a tar or pax file\n");
 		exit(1);
 	}
 
@@ -114,6 +114,10 @@ void initSiteFiles(char* path) {
 			exit(1);
 	}
 	uint8_t len = strlen(buffer);
+	if(buffer[len-1] != '/') {
+		buffer[len] = '/';
+		++len;
+	}
 	rootName = malloc(len+1);
 	strcpy(rootName, buffer);
 }
