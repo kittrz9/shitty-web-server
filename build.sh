@@ -25,14 +25,20 @@ fi
 
 NAME="shittyWebServer"
 CFILES="$(find src/ -name "*.c")"
-CFLAGS="-std=c99 -Wall -Wextra -Wpedantic -g -fsanitize=address"
+CFLAGS="-std=c99 -Wall -Wextra -Wpedantic -g -fsanitize=address -I src/"
 LDFLAGS="$CFLAGS"
 DEFINES="$DEFINES -D_POSIX_SOURCE" # have to set this feature test macro thing for the fileno function
 
 OBJS=""
 
 rm -rf build/ obj/
-mkdir build/ obj/
+mkdir build/
+
+SRCDIRS="$(find src/ -type d)"
+for d in $SRCDIRS; do
+	OBJDIR="$(echo "$d" | sed -e "s/src/obj/")"
+	mkdir $OBJDIR
+done
 
 for f in $CFILES; do
 	OBJNAME="$(echo "$f" | sed -e "s/src/obj/;s/\.c/\.o/")"

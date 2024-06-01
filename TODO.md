@@ -1,3 +1,2 @@
  - add support for more modern tar file formats
  - figure out a way to use port 80 without root privileges
- - split functions to read from a compressed tar file into separate files
