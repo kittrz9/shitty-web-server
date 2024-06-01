@@ -5,11 +5,35 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "files.h"
 #include "http.h"
 
+int serverSocket = 0;
+int clientSocket = 0;	
+
+void endServer(void) {
+	printf("ending server\n");
+	uninitSiteFiles();
+	if(serverSocket) {
+		close(serverSocket);
+	}
+	if(clientSocket) {
+		close(clientSocket);
+	}
+	return;
+}
+
+// can't just put endServer as the signal handler due to atexit needing different a function pointer type
+void handleSignal(int signalID) {
+	(void)signalID;
+	exit(0);
+}
+
 int main(int argc, char** argv) {
+	atexit(endServer);
+	signal(SIGINT, handleSignal);
 	if(argc != 2) {
 		printf("usage:\n\t%s (tar file with all the site's files)\n", argv[0]);
 		return 1;
@@ -21,7 +45,7 @@ int main(int argc, char** argv) {
 	struct sockaddr_in clientAddr;
 	memset(&serverAddr, 0, sizeof(serverAddr));
 	memset(&clientAddr, 0, sizeof(clientAddr));
-	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+	serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if(serverSocket < 0) {
 		perror("socket");
 		exit(1);
@@ -46,7 +70,7 @@ int main(int argc, char** argv) {
 	listen(serverSocket, 5);
 	uint32_t clientLen = sizeof(clientAddr);
 	while(1) {
-		int clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen); 	
+		clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
 
 		char buffer[2048];
 		read(clientSocket, buffer, 2048);
@@ -77,8 +101,6 @@ int main(int argc, char** argv) {
 			close(clientSocket);
 		}
 	}
-	close(serverSocket);
-	uninitSiteFiles();
 	
 	return 0;
 }

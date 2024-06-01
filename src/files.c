@@ -139,15 +139,18 @@ char* readSiteFile(char* name, size_t* s) {
 }
 
 void uninitSiteFiles(void) {
-	free(rootName);
-	switch(compressionType) {
-		case COMPRESSED_BZIP2:
-			break;
-		case COMPRESSED_ZLIB:
-			closeZlib();
-			break;
-		default:
-			break;
+	if(rootName) {
+		free(rootName);
+		switch(compressionType) {
+			case COMPRESSED_BZIP2:
+				closeBzip2();
+				break;
+			case COMPRESSED_ZLIB:
+				closeZlib();
+				break;
+			default:
+				break;
+		}
+		fclose(tarFile);
 	}
-	fclose(tarFile);
 }
